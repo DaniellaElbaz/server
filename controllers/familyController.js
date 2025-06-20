@@ -1,27 +1,27 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { Pool } = require('pg');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
-const dbPath = path.resolve(__dirname, '../FamilyTasks.db');
-const db = new sqlite3.Database(dbPath);
+const registerFamily = async (req, res) => {
+  const { family_name, password } = req.body;
 
-const registerFamily = (req, res) => {
-    const { family_name, password } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO Families (family_name, password) VALUES ($1, $2) RETURNING family_key',
+      [family_name, password]
+    );
 
-    const query = `INSERT INTO Families (family_name, password) VALUES (?, ?)`;
-
-    db.run(query, [family_name, password], function(err) {
-        if (err) {
-            console.error(err.message);
-            res.status(500).json({ message: 'Database error' });
-        } else {
-            res.json({
-                message: 'Family registered successfully!',
-                family_key: this.lastID
-            });
-        }
+    res.json({
+      message: 'Family registered successfully!',
+      family_key: result.rows[0].family_key
     });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Database error' });
+  }
 };
 
-module.exports = {
-    registerFamily
-};
+module.exports = { registerFamily };
