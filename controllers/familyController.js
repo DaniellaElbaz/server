@@ -30,6 +30,52 @@ const registerFamily = async (req, res) => {
     res.status(500).json({ message: 'Database error' });
   }
 };
+const registerParentsChildren = async (req, res) => {
+  const {
+    family_key,
+    parent_name,
+    parent_password,
+    parent_birthdate,
+    child_name,
+    child_birthdate
+  } = req.body;
 
-module.exports = { registerFamily };
+  try {
+    const insertParentQuery = `
+      INSERT INTO Parents (family_key, parent_name, password, birth_date)
+      VALUES ($1, $2, $3, $4) RETURNING parent_id
+    `;
+    const parentResult = await pool.query(insertParentQuery, [
+      family_key,
+      parent_name,
+      parent_password,
+      parent_birthdate
+    ]);
+
+    const insertChildQuery = `
+      INSERT INTO Children (family_key, child_name, birth_date)
+      VALUES ($1, $2, $3) RETURNING child_id
+    `;
+    const childResult = await pool.query(insertChildQuery, [
+      family_key,
+      child_name,
+      child_birthdate
+    ]);
+
+    res.json({
+      message: 'Parent and Child registered successfully!',
+      parent_id: parentResult.rows[0].parent_id,
+      child_id: childResult.rows[0].child_id
+    });
+
+  } catch (err) {
+    console.error("Database error:", err);
+    res.status(500).json({ message: 'Database error' });
+  }
+};
+
+module.exports = {
+  registerFamily,
+  registerParentsChildren
+};
 
