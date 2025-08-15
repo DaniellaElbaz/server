@@ -278,9 +278,9 @@ const listParents = async (req, res) => {
 
 module.exports = {
   registerFamily,
-  registerParentsChildren, // נשאר לשמירה לאחור
-  registerMembers,         
+  registerParentsChildren,
+  registerMembers,
   login,
-  listChildren,      
-  listParents 
+  listChildren,
+  listParents
 };
