@@ -73,9 +73,32 @@ const registerParentsChildren = async (req, res) => {
     res.status(500).json({ message: 'Database error' });
   }
 };
+const login = async (req, res) => {
+  const { family_name, password } = req.body;
+  if (!family_name || !password) {
+    return res.status(400).json({ message: 'family_name and password are required' });
+  }
+
+  try {
+    const q = `SELECT family_key FROM Families WHERE family_name = $1 AND password = $2`;
+    const r = await pool.query(q, [family_name, password]);
+
+    if (r.rows.length === 0) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    return res.json({
+      message: 'Login successful',
+      family_key: r.rows[0].family_key
+    });
+  } catch (err) {
+    console.error('Database error (login):', err);
+    return res.status(500).json({ message: 'Database error' });
+  }
+};
 
 module.exports = {
   registerFamily,
-  registerParentsChildren
+  registerParentsChildren,
+  login,
 };
-

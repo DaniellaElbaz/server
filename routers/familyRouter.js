@@ -4,5 +4,6 @@ const familyController = require('../controllers/familyController');
 
 router.post('/register', familyController.registerFamily);
 router.post('/registerParentsChildren', familyController.registerParentsChildren);
+router.post('/login', familyController.login);
 
 module.exports = router;
