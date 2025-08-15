@@ -252,45 +252,29 @@ const login = async (req, res) => {
     return res.status(500).json({ message: 'Database error' });
   }
 };
-// מחזיר את כל הילדים למשפחה
+// controllers/familyController.js
 const listChildren = async (req, res) => {
   const family_key = Number(req.query.family_key);
   if (!family_key) return res.status(400).json({ message: 'family_key is required' });
-
-  try {
-    const r = await pool.query(
-      `SELECT child_id AS id, child_name AS name, nickname, birth_date
-         FROM Children
-        WHERE family_key = $1
-        ORDER BY child_name ASC`,
-      [family_key]
-    );
-    res.json({ items: r.rows });
-  } catch (err) {
-    console.error('listChildren error:', err);
-    res.status(500).json({ message: 'Database error' });
-  }
+  const r = await pool.query(
+    `SELECT child_id AS id, child_name AS name, nickname, birth_date
+       FROM Children
+      WHERE family_key = $1
+      ORDER BY child_name ASC`, [family_key]);
+  res.json({ items: r.rows });
 };
 
-// מחזיר את כל ההורים למשפחה
 const listParents = async (req, res) => {
   const family_key = Number(req.query.family_key);
   if (!family_key) return res.status(400).json({ message: 'family_key is required' });
-
-  try {
-    const r = await pool.query(
-      `SELECT parent_id AS id, parent_name AS name, nickname, birth_date
-         FROM Parents
-        WHERE family_key = $1
-        ORDER BY parent_name ASC`,
-      [family_key]
-    );
-    res.json({ items: r.rows });
-  } catch (err) {
-    console.error('listParents error:', err);
-    res.status(500).json({ message: 'Database error' });
-  }
+  const r = await pool.query(
+    `SELECT parent_id AS id, parent_name AS name, nickname, birth_date
+       FROM Parents
+      WHERE family_key = $1
+      ORDER BY parent_name ASC`, [family_key]);
+  res.json({ items: r.rows });
 };
+
 
 module.exports = {
   registerFamily,
