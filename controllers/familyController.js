@@ -252,44 +252,27 @@ const login = async (req, res) => {
     return res.status(500).json({ message: 'Database error' });
   }
 };
+// controllers/familyController.js
 const listChildren = async (req, res) => {
-  const family_key = parseInt(req.query.family_key, 10);
-  if (Number.isNaN(family_key)) {
-    return res.status(400).json({ message: 'family_key must be a number' });
-  }
-  try {
-    const { rows } = await pool.query(
-      `SELECT  child_name
-         FROM children
-        WHERE family_key = $1
-        ORDER BY child_name `,
-      [family_key]
-    );
-    return res.json({ items: rows });
-  } catch (err) {
-    console.error('listChildren db error:', err);
-    return res.status(500).json({ message: 'Database error' });
-  }
+  const family_key = Number(req.query.family_key);
+  if (!family_key) return res.status(400).json({ message: 'family_key is required' });
+  const r = await pool.query(
+    `SELECT child_id AS id, child_name AS name, nickname, birth_date
+       FROM Children
+      WHERE family_key = $1
+      ORDER BY child_name ASC`, [family_key]);
+  res.json({ items: r.rows });
 };
 
 const listParents = async (req, res) => {
-  const family_key = parseInt(req.query.family_key, 10);
-  if (Number.isNaN(family_key)) {
-    return res.status(400).json({ message: 'family_key must be a number' });
-  }
-  try {
-    const { rows } = await pool.query(
-      `SELECT parent_name
-         FROM parents
-        WHERE family_key = $1
-        ORDER BY parent_name`,
-      [family_key]
-    );
-    return res.json({ items: rows });
-  } catch (err) {
-    console.error('listParents db error:', err);
-    return res.status(500).json({ message: 'Database error' });
-  }
+  const family_key = Number(req.query.family_key);
+  if (!family_key) return res.status(400).json({ message: 'family_key is required' });
+  const r = await pool.query(
+    `SELECT parent_id AS id, parent_name AS name, nickname, birth_date
+       FROM Parents
+      WHERE family_key = $1
+      ORDER BY parent_name ASC`, [family_key]);
+  res.json({ items: r.rows });
 };
 
 
