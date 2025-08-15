@@ -259,10 +259,10 @@ const listChildren = async (req, res) => {
   }
   try {
     const { rows } = await pool.query(
-      `SELECT child_id AS id, child_name AS name, nickname, birth_date
+      `SELECT  child_name
          FROM children
         WHERE family_key = $1
-        ORDER BY child_name ASC`,
+        ORDER BY child_name `,
       [family_key]
     );
     return res.json({ items: rows });
@@ -279,10 +279,10 @@ const listParents = async (req, res) => {
   }
   try {
     const { rows } = await pool.query(
-      `SELECT parent_id AS id, parent_name AS name, nickname, birth_date
+      `SELECT parent_name
          FROM parents
         WHERE family_key = $1
-        ORDER BY parent_name ASC`,
+        ORDER BY parent_name`,
       [family_key]
     );
     return res.json({ items: rows });
