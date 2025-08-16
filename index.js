@@ -21,6 +21,8 @@ const pool = new Pool({
 
 const familyRouter = require('./routers/familyRouter');
 app.use('/family', familyRouter);
+const parentCalendarRouter = require('./routers/parentCalendarRouter');
+app.use('/parent-calendar', parentCalendarRouter);
 
 
 app.listen(3000, () => {
