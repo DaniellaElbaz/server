@@ -18,45 +18,45 @@ exports.listChildTasks = async (req, res) => {
   }
 
   try {
-   const q = `
-  WITH day_window AS (
-    SELECT
-      ($1::date)::timestamptz                     AS d_start,
-      ($1::date + INTERVAL '1 day')::timestamptz AS d_end
-  )
-  SELECT
-    e.event_id            AS task_id,
-    e.title,
-    1                     AS points_default,
-    COALESCE(s.status,0)  AS status,      -- 0=pending,1=child_done,2=approved,3=rejected
-    s.child_marked_at,
-    s.confirmed_at,
-    s.points_awarded,
-    ec.color              AS category_color
-  FROM events e
-  LEFT JOIN eventcategories ec ON ec.category_id = e.category_id
-  CROSS JOIN day_window dw
-  WHERE e.family_key = $2
-    AND e.start_at < dw.d_end
-    AND COALESCE(e.end_at, e.start_at) >= dw.d_start
-    AND EXISTS (
-      SELECT 1
-      FROM eventtargets t
-      WHERE t.event_id = e.event_id
-        AND t.family_key = $2
-        AND (
-          t.target_type = 'family'
-          OR t.target_type = 'all_kids'
-          OR (t.target_type = 'child' AND t.child_id = $3)
+    const q = `
+      WITH day_window AS (
+        SELECT
+          ($1::date)::timestamptz                     AS d_start,
+          ($1::date + INTERVAL '1 day')::timestamptz AS d_end
+      )
+      SELECT
+        e.event_id            AS task_id,
+        e.title,
+        1                     AS points_default,
+        COALESCE(s.status,0)  AS status,
+        s.child_marked_at,
+        s.confirmed_at,
+        s.points_awarded,
+        ec.color              AS category_color
+      FROM events e
+      CROSS JOIN day_window dw
+      LEFT JOIN eventcategories ec ON ec.category_id = e.category_id
+      LEFT JOIN childtaskevents s
+             ON s.event_id   = e.event_id
+            AND s.child_id   = $3
+            AND s.task_date  = $1::date
+            AND s.family_key = $2
+      WHERE e.family_key = $2
+        AND e.start_at < dw.d_end
+        AND COALESCE(e.end_at, e.start_at) >= dw.d_start
+        AND EXISTS (
+          SELECT 1
+          FROM eventtargets t
+          WHERE t.event_id = e.event_id
+            AND t.family_key = $2
+            AND (
+              t.target_type = 'family'
+              OR t.target_type = 'all_kids'
+              OR (t.target_type = 'child' AND t.child_id = $3)
+            )
         )
-    )
-  LEFT JOIN childtaskevents s
-         ON s.event_id   = e.event_id
-        AND s.child_id   = $3
-        AND s.task_date  = $1::date
-        AND s.family_key = $2
-  ORDER BY e.start_at, e.event_id;
-`;
+      ORDER BY e.start_at, e.event_id;
+    `;
     const { rows } = await pool.query(q, [date, family_key, child_id]);
     res.json({ items: rows });
   } catch (err) {
