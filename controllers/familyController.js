@@ -274,6 +274,51 @@ const listParents = async (req, res) => {
       ORDER BY parent_name ASC`, [family_key]);
   res.json({ items: r.rows });
 };
+const loginMember = async (req, res) => {
+  const { family_key, type, member_id, pin_code } = req.body;
+
+  if (!family_key || !type || !member_id || !pin_code) {
+    return res.status(400).json({ message: 'family_key, type, member_id and pin_code are required' });
+  }
+  if (!/^\d{4}$/.test(String(pin_code))) {
+    return res.status(400).json({ message: 'PIN must be 4 digits' });
+  }
+
+  try {
+    let sql, params;
+    if (String(type).toLowerCase() === 'parent') {
+      // הורה: תומך גם ב-password כגיבוי אם pin_code ריק (לשמירת תאימות)
+      sql = `
+        SELECT parent_id AS id, parent_name AS name
+        FROM parents
+        WHERE family_key = $1 AND parent_id = $2
+          AND (pin_code = $3 OR password = $3)
+      `;
+      params = [family_key, member_id, pin_code];
+    } else {
+      // ילד: אימות לפי pin_code בלבד
+      sql = `
+        SELECT child_id AS id, child_name AS name
+        FROM children
+        WHERE family_key = $1 AND child_id = $2
+          AND pin_code = $3
+      `;
+      params = [family_key, member_id, pin_code];
+    }
+
+    const r = await pool.query(sql, params);
+    if (r.rowCount === 0) return res.status(401).json({ message: 'Invalid PIN' });
+
+    return res.json({
+      message: 'OK',
+      role: String(type).toLowerCase(),
+      member: r.rows[0]
+    });
+  } catch (err) {
+    console.error('loginMember error:', err);
+    return res.status(500).json({ message: 'Database error' });
+  }
+};
 
 
 module.exports = {
@@ -282,5 +327,6 @@ module.exports = {
   registerMembers,
   login,
   listChildren,
-  listParents
+  listParents,
+  loginMember
 };
