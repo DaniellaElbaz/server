@@ -134,56 +134,84 @@ const updateEvent = async (req, res) => {
   if (Number.isNaN(id)) return res.status(400).json({ message: 'Invalid id' });
 
   const {
+    family_key: bodyFamilyKey,   // ייתכן שלא נשלח
     title, notes, location, start_at, end_at, all_day, priority, category_id, status,
     targets
   } = req.body || {};
-
-  const fields = [];
-  const params = [];
-  let i = 1;
-
-  function push(field, value){
-    fields.push(`${field} = $${i++}`);
-    params.push(value);
-  }
-  if (title !== undefined)      push('title', title);
-  if (notes !== undefined)      push('notes', notes);
-  if (location !== undefined)   push('location', location);
-  if (start_at !== undefined)   push('start_at', start_at);
-  if (end_at !== undefined)     push('end_at', end_at);
-  if (all_day !== undefined)    push('all_day', all_day);
-  if (priority !== undefined)   push('priority', priority);
-  if (category_id !== undefined)push('category_id', category_id);
-  if (status !== undefined)     push('status', status);
-  push('updated_at', new Date().toISOString());
-
-  if (fields.length === 1) {
-    // רק updated_at – אין מה לעדכן
-  }
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
+    // 1) מאתרים את האירוע והמשפחה שלו
+    const evt = await client.query(
+      `SELECT event_id, family_key FROM events WHERE event_id = $1`,
+      [id]
+    );
+    if (!evt.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    const dbFamilyKey = evt.rows[0].family_key;
+
+    // 2) אם נשלח family_key והינו שונה — אסור
+    if (bodyFamilyKey !== undefined && bodyFamilyKey !== null && Number(bodyFamilyKey) !== dbFamilyKey) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ message: 'Forbidden: family mismatch' });
+    }
+
+    // נשתמש במשפחה מה-DB (אמין)
+    const effectiveFamilyKey = dbFamilyKey;
+
+    // 3) אם קטגוריה נשלחה — בדיקת שייכות למשפחה
+    if (category_id !== undefined && category_id !== null) {
+      const ck = await client.query(
+        `SELECT 1 FROM eventcategories WHERE category_id=$1 AND family_key=$2`,
+        [category_id, effectiveFamilyKey]
+      );
+      if (!ck.rowCount) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ message: 'category_id not found for this family' });
+      }
+    }
+
+    // 4) בונים UPDATE דינמי
+    const fields = [];
+    const params = [];
+    let i = 1;
+    const push = (f, v) => { fields.push(`${f}=$${i++}`); params.push(v); };
+
+    if (title      !== undefined) push('title', title);
+    if (notes      !== undefined) push('notes', notes);
+    if (location   !== undefined) push('location', location);
+    if (start_at   !== undefined) push('start_at', start_at);
+    if (end_at     !== undefined) push('end_at', end_at);
+    if (all_day    !== undefined) push('all_day', all_day);
+    if (priority   !== undefined) push('priority', priority);
+    if (category_id!== undefined) push('category_id', category_id);
+    if (status     !== undefined) push('status', status);
+    // אם אין לכם עמודה updated_at הסירי את השורה הבאה:
+    push('updated_at', new Date().toISOString());
+
     if (fields.length) {
       const q = `UPDATE events SET ${fields.join(', ')} WHERE event_id = $${i} RETURNING event_id`;
       params.push(id);
       const r = await client.query(q, params);
-      if (r.rowCount === 0) throw new Error('Not found');
+      if (!r.rowCount) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ message: 'Event not found' });
+      }
     }
 
+    // 5) החלפת יעדים (אם נשלח targets)
     if (Array.isArray(targets)) {
       await client.query(`DELETE FROM eventtargets WHERE event_id = $1`, [id]);
-      // ננסה להשיג את family_key מהאירוע
-      const fkR = await client.query(`SELECT family_key FROM events WHERE event_id = $1`, [id]);
-      const fk = fkR.rows[0]?.family_key;
       const arr = targets.length ? targets : [{ type: 'family' }];
       for (const t of arr) {
-        const { type, child_id = null, parent_id = null } = t || {};
         await client.query(
           `INSERT INTO eventtargets (event_id, family_key, target_type, child_id, parent_id)
            VALUES ($1,$2,$3,$4,$5)`,
-          [id, fk, type, child_id, parent_id]
+          [id, effectiveFamilyKey, t.type, t.child_id ?? null, t.parent_id ?? null]
         );
       }
     }
@@ -193,11 +221,12 @@ const updateEvent = async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('updateEvent error:', err);
-    return res.status(500).json({ message: 'Database error' });
+    return res.status(500).json({ message: 'Database error', detail: String(err.message || err) });
   } finally {
     client.release();
   }
 };
+
 
 /** ---------- DELETE /parent-calendar/events/:id ---------- */
 const deleteEvent = async (req, res) => {
