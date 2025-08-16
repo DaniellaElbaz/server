@@ -23,6 +23,8 @@ const familyRouter = require('./routers/familyRouter');
 app.use('/family', familyRouter);
 const parentCalendarRouter = require('./routers/parentCalendarRouter');
 app.use('/parent-calendar', parentCalendarRouter);
+const kidsTasksRouter = require('./routers/kidsTasksRouter');
+app.use('/kids', kidsTasksRouter);
 
 
 app.listen(3000, () => {
