@@ -1,14 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const kids = require('../controllers/kidsController');
+const kidsController = require('../controllers/kidsController'); // ← זה השם שבו נשתמש מתחת
 
-// routers/kidsRouter.js
-router.get('/tasks', (req,res,next)=>{
-  console.log('kidsRouter /kids/tasks HIT');
-  next();
-}, kidsController.listChildTasks);
-
-router.post('/tasks/mark-done', kids.markChildDone);
-router.get('/score/daily', kids.dailyScore);
+router.get('/tasks',kidsController.listChildTasks);
+router.post('/tasks/mark-done',kidsController.markChildDone);
+router.get('/score/daily',     kidsController.dailyScore);
 
 module.exports = router;
+
