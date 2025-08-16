@@ -246,12 +246,37 @@ const createCategory = async (req, res) => {
     return res.status(500).json({ message: 'Database error' });
   }
 };
+/** ---------- GET /parent-calendar/events/:id ---------- */
+const getEventById = async (req, res) => {
+  const id = Number(req.params.id);
+  const family_key = Number(req.query.family_key);
+  if (!id || !family_key) return res.status(400).json({ message:'id and family_key are required' });
 
+  const q = `
+    SELECT e.event_id AS id, e.title, e.notes, e.location,
+           e.start_at, e.end_at, e.all_day, e.priority,
+           e.category_id, c.name AS category_name, c.color AS category_color,
+           COALESCE(json_agg(
+             CASE WHEN t.target_type IS NULL THEN NULL ELSE
+               json_build_object('type',t.target_type,'child_id',t.child_id,'parent_id',t.parent_id)
+             END
+           ) FILTER (WHERE t.target_type IS NOT NULL), '[]') AS targets
+    FROM events e
+    LEFT JOIN eventcategories c ON c.category_id = e.category_id
+    LEFT JOIN eventtargets t     ON t.event_id    = e.event_id
+    WHERE e.event_id=$1 AND e.family_key=$2
+    GROUP BY e.event_id, c.name, c.color
+    LIMIT 1`;
+  const { rows } = await pool.query(q, [id, family_key]);
+  if (!rows.length) return res.status(404).json({ message:'Event not found' });
+  res.json(rows[0]);
+};
 module.exports = {
   listEvents,
   createEvent,
   updateEvent,
   deleteEvent,
   listCategories,
+  getEventById,
   createCategory
 };
