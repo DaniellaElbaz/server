@@ -24,7 +24,9 @@ app.use('/family', familyRouter);
 const parentCalendarRouter = require('./routers/parentCalendarRouter');
 app.use('/parent-calendar', parentCalendarRouter);
 const kidsTasksRouter = require('./routers/kidsTasksRouter');
-app.use('/kids', kidsTasksRouter);
+app.use('/kids/assignments', kidsTasksRouter);
+const kidsRouter = require('./routers/kidsRouter');
+app.use('/kids', kidsRouter);
 
 
 app.listen(3000, () => {
