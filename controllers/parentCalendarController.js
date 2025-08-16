@@ -62,6 +62,7 @@ const listEvents = async (req, res) => {
  * }
  */
 const createEvent = async (req, res) => {
+  console.log('createEvent payload:', req.body);
   const {
     family_key, title, notes = null, location = null,
     all_day = true, start_at, end_at = null, date,
@@ -114,12 +115,15 @@ const createEvent = async (req, res) => {
     await client.query('COMMIT');
     return res.json({ message: 'Event created', id: eventId });
   } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('createEvent error:', err);
-    return res.status(500).json({ message: 'Database error' });
-  } finally {
-    client.release();
-  }
+  await client.query('ROLLBACK');
+  console.error('createEvent error:', err.stack || err);
+  return res.status(500).json({
+    message: 'Database error',
+    detail: String(err.message || err)   // <-- זה מה שנראה ב-Network
+  });
+  }finally {
+      client.release();
+    }
 };
 
 /** ---------- PATCH /parent-calendar/events/:id ----------
