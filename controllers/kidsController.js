@@ -79,18 +79,36 @@ exports.markChildDone = async (req, res) => {
   if (!family_key || !child_id || !task_id || !date) {
     return res.status(400).json({ message: 'family_key, child_id, task_id and date are required' });
   }
+
+  const client = await pool.connect();
   try {
-    const q = `
-      INSERT INTO childtaskevents (family_key, event_id, child_id, task_date, status, child_marked_at)
-      VALUES ($1,$2,$3,$4::date,1,now())
-      ON CONFLICT (event_id, child_id, task_date)
-      DO UPDATE SET status=1, child_marked_at=now()
-    `;
-    await pool.query(q, [family_key, task_id, child_id, date]);
-    res.json({ message: 'Marked as done' });
+    await client.query('BEGIN');
+
+    // 1) ניסיון עדכון
+    const up = await client.query(`
+      UPDATE childtaskevents
+         SET status=1, child_marked_at=now()
+       WHERE family_key=$1 AND event_id=$2 AND child_id=$3 AND task_date=$4::date
+      RETURNING event_id
+    `, [family_key, task_id, child_id, date]);
+
+    // 2) אם לא קיימת שורה – מכניסים חדשה
+    if (up.rowCount === 0) {
+      await client.query(`
+        INSERT INTO childtaskevents
+          (family_key, event_id, child_id, task_date, status, child_marked_at)
+        VALUES ($1,$2,$3,$4::date,1,now())
+      `, [family_key, task_id, child_id, date]);
+    }
+
+    await client.query('COMMIT');
+    return res.json({ message: 'Marked as done' });
   } catch (err) {
-    console.error('markChildDone error:', err);
-    res.status(500).json({ message: 'Database error' });
+    await client.query('ROLLBACK');
+    console.error('markChildDone error:', err.stack || err);
+    return res.status(500).json({ message: 'Database error', detail: String(err.message || err) });
+  } finally {
+    client.release();
   }
 };
 
