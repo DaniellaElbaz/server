@@ -139,58 +139,48 @@ exports.dailyScore = async (req, res) => {
   }
 };
 // ---- WEEKLY LEADERBOARD (Sunday→Saturday) ----
-async function weeklyLeaderboard(req, res) {
-  const family_key = Number(req.query.family_key);
-  const week_of    = req.query.week_of || new Date().toISOString().slice(0,10); // YYYY-MM-DD
+exports.weeklyLeaderboard = async (req, res) => {
+  const { Pool } = require('pg');
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
 
-  if (!family_key) {
-    return res.status(400).json({ message: 'family_key is required' });
-  }
+  const family_key = Number(req.query.family_key);
+  // date אופציונלי להצגת שבוע של תאריך כלשהו; ברירת מחדל היום
+  const baseDate = req.query.date || new Date().toISOString().slice(0,10);
+
+  if (!family_key) return res.status(400).json({ message: 'family_key is required' });
+
+  // גבולות שבוע: ראשון עד שבת (UTC פשטני; אם צריך לפי אזור זמן אפשר לכוון)
+  const d = new Date(baseDate + 'T00:00:00Z');
+  const dow = d.getUTCDay();             // 0=Sunday
+  const weekStart = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - dow));
+  const weekEnd   = new Date(Date.UTC(weekStart.getUTCFullYear(), weekStart.getUTCMonth(), weekStart.getUTCDate() + 7));
 
   try {
     const q = `
-      WITH params AS (SELECT $1::date AS base),
-      bounds AS (
-        SELECT
-          (date_trunc('week', base + interval '1 day')::date - 1) AS sun, -- Sunday
-          (date_trunc('week', base + interval '1 day')::date - 1 + 6) AS sat
-        FROM params
-      )
-      SELECT
-        (SELECT sun FROM bounds) AS start_date,
-        (SELECT sat FROM bounds) AS end_date,
-        c.child_id,
-        c.child_name,
-        c.avatar_url,
-        COALESCE(SUM(cte.points_awarded), 0) AS points
+      SELECT c.child_id, c.child_name AS name, c.avatar_url,
+             COALESCE(SUM(p.points), 0) AS points
       FROM children c
-      LEFT JOIN childtaskevents cte
-        ON cte.child_id = c.child_id
-       AND cte.family_key = $2
-       AND cte.task_date BETWEEN (SELECT sun FROM bounds) AND (SELECT sat FROM bounds)
-      WHERE c.family_key = $2
+      LEFT JOIN pointsledger p
+        ON p.child_id = c.child_id
+       AND p.family_key = $1
+       AND p.created_at >= $2
+       AND p.created_at <  $3
+      WHERE c.family_key = $1
       GROUP BY c.child_id, c.child_name, c.avatar_url
-      ORDER BY points DESC, LOWER(c.child_name) ASC
-      LIMIT 10;
+      ORDER BY points DESC, c.child_name ASC
+      LIMIT 3
     `;
-    const { rows } = await pool.query(q, [week_of, family_key]);
-
-    const start_date = rows[0]?.start_date || null;
-    const end_date   = rows[0]?.end_date   || null;
-    const items = rows.map(r => ({
-      child_id:   r.child_id,
-      child_name: r.child_name,
-      avatar_url: r.avatar_url || null,
-      points:     Number(r.points || 0),
-    }));
-
-    return res.json({ start_date, end_date, items });
+    const { rows } = await pool.query(q, [family_key, weekStart.toISOString(), weekEnd.toISOString()]);
+    res.json({
+      week_start: weekStart.toISOString(),
+      week_end:   weekEnd.toISOString(),
+      items: rows
+    });
   } catch (err) {
-    console.error('weeklyLeaderboard error:', err.stack || err);
-    return res.status(500).json({ message: 'Database error', detail: String(err.message || err) });
+    console.error('weeklyLeaderboard error:', err);
+    res.status(500).json({ message: 'Database error' });
   }
-}
-
-module.exports = {
-  weeklyLeaderboard
 };
