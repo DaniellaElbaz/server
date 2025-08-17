@@ -5,6 +5,7 @@ const kidsController = require('../controllers/kidsController'); // ← זה ה�
 router.get('/tasks',kidsController.listChildTasks);
 router.post('/tasks/mark-done',kidsController.markChildDone);
 router.get('/score/daily',     kidsController.dailyScore);
+router.get('/leaderboard/weekly', kidsController.weeklyLeaderboard);
 
 module.exports = router;
 

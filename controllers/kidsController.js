@@ -138,3 +138,59 @@ exports.dailyScore = async (req, res) => {
     res.status(500).json({ message: 'Database error' });
   }
 };
+// ---- WEEKLY LEADERBOARD (Sunday→Saturday) ----
+async function weeklyLeaderboard(req, res) {
+  const family_key = Number(req.query.family_key);
+  const week_of    = req.query.week_of || new Date().toISOString().slice(0,10); // YYYY-MM-DD
+
+  if (!family_key) {
+    return res.status(400).json({ message: 'family_key is required' });
+  }
+
+  try {
+    const q = `
+      WITH params AS (SELECT $1::date AS base),
+      bounds AS (
+        SELECT
+          (date_trunc('week', base + interval '1 day')::date - 1) AS sun, -- Sunday
+          (date_trunc('week', base + interval '1 day')::date - 1 + 6) AS sat
+        FROM params
+      )
+      SELECT
+        (SELECT sun FROM bounds) AS start_date,
+        (SELECT sat FROM bounds) AS end_date,
+        c.child_id,
+        c.child_name,
+        c.avatar_url,
+        COALESCE(SUM(cte.points_awarded), 0) AS points
+      FROM children c
+      LEFT JOIN childtaskevents cte
+        ON cte.child_id = c.child_id
+       AND cte.family_key = $2
+       AND cte.task_date BETWEEN (SELECT sun FROM bounds) AND (SELECT sat FROM bounds)
+      WHERE c.family_key = $2
+      GROUP BY c.child_id, c.child_name, c.avatar_url
+      ORDER BY points DESC, LOWER(c.child_name) ASC
+      LIMIT 10;
+    `;
+    const { rows } = await pool.query(q, [week_of, family_key]);
+
+    const start_date = rows[0]?.start_date || null;
+    const end_date   = rows[0]?.end_date   || null;
+    const items = rows.map(r => ({
+      child_id:   r.child_id,
+      child_name: r.child_name,
+      avatar_url: r.avatar_url || null,
+      points:     Number(r.points || 0),
+    }));
+
+    return res.json({ start_date, end_date, items });
+  } catch (err) {
+    console.error('weeklyLeaderboard error:', err.stack || err);
+    return res.status(500).json({ message: 'Database error', detail: String(err.message || err) });
+  }
+}
+
+module.exports = {
+  weeklyLeaderboard
+};
