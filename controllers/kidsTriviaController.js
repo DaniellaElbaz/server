@@ -11,7 +11,35 @@ function pickOne(arr, seed) {
   const i = Math.floor(seededRand(seed) * arr.length);
   return arr[i];
 }
+exports.triviaToday = async (req, res) => {
+  try {
+    const family_key = Number(req.query.family_key);
+    if (!family_key) {
+      return res.status(400).json({ message: 'family_key is required' });
+    }
+    const date = (req.query.date || new Date().toISOString().slice(0,10)); // YYYY-MM-DD
 
+    // בדיקה אם כבר יש רשומה נכונה להיום (מישהו במשפחה ענה נכון)
+    const q = `
+      SELECT EXISTS (
+        SELECT 1
+        FROM triviadaily
+        WHERE family_key = $1
+          AND trivia_date = $2::date
+          AND correct = TRUE
+      ) AS answered
+    `;
+    const { rows } = await pool.query(q, [family_key, date]);
+
+    if (rows[0]?.answered) {
+      return res.status(409).json({ message: 'Trivia already answered today', date });
+    }
+    return res.json({ available: true, date });
+  } catch (err) {
+    console.error('triviaToday error:', err.stack || err);
+    return res.status(500).json({ message: 'Database error', detail: String(err.message || err) });
+  }
+};
 /** בונה שאלה דטרמיניסטית למשפחה/תאריך (כולם יקבלו אותה שאלה) */
 async function buildQuestion(family_key, date) {
   // seed קבוע: YYYYMMDD + family_key
