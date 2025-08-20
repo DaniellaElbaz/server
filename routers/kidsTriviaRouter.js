@@ -6,5 +6,4 @@ const ctrl = require('../controllers/kidsTriviaController');
 router.get('/today', ctrl.getTodayQuestion);
 // POST /kids/trivia/answer  { family_key, child_id, date, question_id, choice }
 router.post('/answer', ctrl.submitAnswer);
-router.get('/trivia/today', ctrl.triviaToday);
 module.exports = router;
