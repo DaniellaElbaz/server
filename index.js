@@ -27,6 +27,8 @@ const kidsTasksRouter = require('./routers/kidsTasksRouter');
 app.use('/kids-legacy',  kidsTasksRouter);
 const kidsRouter = require('./routers/kidsRouter');
 app.use('/kids', kidsRouter);
+const kidsTriviaRouter = require('./routers/kidsTriviaRouter');
+app.use('/kids/trivia', kidsTriviaRouter);
 
 
 app.listen(3000, () => {
