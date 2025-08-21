@@ -119,7 +119,7 @@ exports.markChildDone = async (req, res) => {
 exports.dailyScore = async (req, res) => {
   const family_key = Number(req.query.family_key);
   const child_id   = Number(req.query.child_id);
-  const date       = req.query.date;
+  const date       = req.query.date;           // YYYY-MM-DD
 
   if (!family_key || !child_id || !date) {
     return res.status(400).json({ message: 'family_key, child_id and date are required' });
@@ -127,15 +127,27 @@ exports.dailyScore = async (req, res) => {
 
   try {
     const q = `
-      SELECT COALESCE(SUM(points_awarded),0) AS points
-      FROM childtaskevents
-      WHERE family_key=$1 AND child_id=$2 AND task_date=$3::date
+      WITH task_pts AS (
+        SELECT COALESCE(SUM(points_awarded),0) AS pts
+        FROM childtaskevents
+        WHERE family_key=$1 AND child_id=$2 AND task_date=$3::date AND status=2
+      ),
+      trivia_pts AS (
+        SELECT COALESCE(SUM(points),0) AS pts
+        FROM pointsledger
+        WHERE family_key=$1 AND child_id=$2
+          AND (
+               trivia_date = $3::date
+            OR (source='trivia' AND DATE(created_at) = $3::date)
+          )
+      )
+      SELECT (SELECT pts FROM task_pts) + (SELECT pts FROM trivia_pts) AS points
     `;
     const { rows } = await pool.query(q, [family_key, child_id, date]);
-    res.json({ points: Number(rows[0]?.points || 0) });
+    return res.json({ points: Number(rows[0]?.points || 0) });
   } catch (err) {
     console.error('dailyScore error:', err);
-    res.status(500).json({ message: 'Database error' });
+    return res.status(500).json({ message: 'Database error' });
   }
 };
 // ---- WEEKLY LEADERBOARD (Sunday→Saturday) ----
