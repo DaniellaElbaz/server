@@ -2,14 +2,16 @@ const express = require('express');
 const router = express.Router();
 const ctrl = require('../controllers/parentTasksController');
 
-// רשימת פריטים לאישור (הילד סימן "סיימתי" = status=1)
-router.get('/review', ctrl.listForReview);
+// אישורי הורה ליום מסוים
+router.get('/review', ctrl.reviewDay);
 
-// אישור משימה (מעניק נקודה)
-router.post('/approve', ctrl.approveOne);
+// אישור / דחייה
+router.post('/approve', ctrl.approveTask);
+router.post('/reject',  ctrl.rejectTask);
 
-// דחייה / ביטול
-router.post('/reject', ctrl.rejectOne);
+// גרף שבועי (לצ'ארט)
+router.get('/leaderboard/week', ctrl.weeklyLeaderboard);
 
 module.exports = router;
+
 
