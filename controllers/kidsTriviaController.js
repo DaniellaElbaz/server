@@ -169,7 +169,17 @@ exports.getTodayQuestion = async (req,res)=>{
         // לא מחזירים תשובה נכונה ללקוח; נבדוק בצד שרת לפי הטקסט שנבחר
       });
     }
-
+ // === נסיון 3: API חיצוני ===
+    const ext = await fetchExternalQuestion();
+    if (ext) {
+      return res.json({
+        question_id: `EXT-${family_key}-${date}`, // מזהה "חיצוני"
+        text: ext.text,
+        options: ext.options,
+        correct_token: ext.correct_token, // לא מציגים ב-UI; יוחזר ב-POST לבדיקה
+        // לא נחזיר correct_text ללקוח בתשובה הסופית אם לא רוצים; אפשר להשמיטו כאן.
+      });
+    }
     // === נסיון 2 (fallback DB): "מי מהבאים שייך למשפחה?" ===
     const kids = await pool.query(`
       SELECT child_name FROM Children WHERE family_key=$1 LIMIT 50
@@ -192,17 +202,7 @@ exports.getTodayQuestion = async (req,res)=>{
         options
       });
     }
-    // === נסיון 3: API חיצוני ===
-    const ext = await fetchExternalQuestion();
-    if (ext) {
-      return res.json({
-        question_id: `EXT-${family_key}-${date}`, // מזהה "חיצוני"
-        text: ext.text,
-        options: ext.options,
-        correct_token: ext.correct_token, // לא מציגים ב-UI; יוחזר ב-POST לבדיקה
-        // לא נחזיר correct_text ללקוח בתשובה הסופית אם לא רוצים; אפשר להשמיטו כאן.
-      });
-    }
+   
 
     // === נסיון 4 (fallback כללי מאוד) ===
     return res.json({
@@ -260,24 +260,7 @@ exports.submitAnswer = async (req,res)=>{
     let correct = false;
 
     if (kind === 'Y1') {
-      // אנו מצפים לקבל מהקליינט גם correct_token שחזר בשאלה
-      const tokenFromClient = (req.body.correct_token || '').trim();
-      if (!tokenFromClient) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ message: 'correct_token is required for external questions' });
-      }
-      // בדיקה קריפטוגרפית: מחשבים hash(choiceText+secret) ומשווים לטוקן שהוחזר עם השאלה
-      const expect = signCorrectText(choiceText);
-      correct = (expect === tokenFromClient);
-     
-    }
-    else if (kind === 'C1') {
-      const k = await client.query(`SELECT child_name FROM Children WHERE family_key=$1`,[family_key]);
-      const names = new Set(k.rows.map(r=>r.child_name));
-      correct = names.has(choiceText);
-    }
-      else if (kind === 'EXT') {
-       const y = await client.query(`
+      const y = await client.query(`
         WITH win AS (
           SELECT ($1::date - INTERVAL '1 day')::timestamptz AS d0,
                  ($1::date)::timestamptz                     AS d1
@@ -296,6 +279,22 @@ exports.submitAnswer = async (req,res)=>{
       const yesterday = new Set(y.rows.map(r=>r.title));
       // תשובה נכונה אם הטקסט שנבחר *לא* הופיע אתמול
       correct = choiceText && !yesterday.has(choiceText);
+    }
+    else if (kind === 'C1') {
+      const k = await client.query(`SELECT child_name FROM Children WHERE family_key=$1`,[family_key]);
+      const names = new Set(k.rows.map(r=>r.child_name));
+      correct = names.has(choiceText);
+    }
+      else if (kind === 'EXT') {
+      // אנו מצפים לקבל מהקליינט גם correct_token שחזר בשאלה
+      const tokenFromClient = (req.body.correct_token || '').trim();
+      if (!tokenFromClient) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ message: 'correct_token is required for external questions' });
+      }
+      // בדיקה קריפטוגרפית: מחשבים hash(choiceText+secret) ומשווים לטוקן שהוחזר עם השאלה
+      const expect = signCorrectText(choiceText);
+      correct = (expect === tokenFromClient);
     }
 
     else { // G1
