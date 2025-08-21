@@ -256,7 +256,7 @@ exports.submitAnswer = async (req,res)=>{
     }
 
     // הכרעת תשובה לפי סוג השאלה
-    const kind = String(question_id).split('-')[0]; // Y1 / C1 / G1
+    const kind ='EXT';
     let correct = false;
 
     if (kind === 'Y1') {
