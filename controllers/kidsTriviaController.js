@@ -21,7 +21,7 @@ async function fetchExternalQuestion() {
   const token = process.env.QUIZ_API_TOKEN;
   try {
     if (token) {
-      const r = await fetch('https://quizapi.io/api/v1/questions?limit=1&tags=general_knowledge', {
+      const r = await fetch('https://quizapi.io/api/v1/questions?limit=1&tags=general_knowledge&difficulty=easy', {
         headers: { 'X-Api-Key': token }
       });
       if (r.ok) {
@@ -88,6 +88,7 @@ exports.getTodayQuestion = async (req,res)=>{
   const family_key = Number(req.query.family_key);
   const child_id   = Number(req.query.child_id);
   const date       = req.query.date; // YYYY-MM-DD
+  const level      = String(req.query.level||'easy');
   if(!family_key || !child_id || !date) {
     return res.status(400).json({message:'family_key, child_id, date are required'});
   }
