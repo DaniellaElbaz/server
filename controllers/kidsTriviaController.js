@@ -256,11 +256,28 @@ exports.submitAnswer = async (req,res)=>{
     }
 
     // הכרעת תשובה לפי סוג השאלה
-    const kind ='EXT';
+    const kind = String(question_id).split('-')[0]; // Y1 / C1 / G1
     let correct = false;
 
     if (kind === 'Y1') {
-      const y = await client.query(`
+      // אנו מצפים לקבל מהקליינט גם correct_token שחזר בשאלה
+      const tokenFromClient = (req.body.correct_token || '').trim();
+      if (!tokenFromClient) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ message: 'correct_token is required for external questions' });
+      }
+      // בדיקה קריפטוגרפית: מחשבים hash(choiceText+secret) ומשווים לטוקן שהוחזר עם השאלה
+      const expect = signCorrectText(choiceText);
+      correct = (expect === tokenFromClient);
+     
+    }
+    else if (kind === 'C1') {
+      const k = await client.query(`SELECT child_name FROM Children WHERE family_key=$1`,[family_key]);
+      const names = new Set(k.rows.map(r=>r.child_name));
+      correct = names.has(choiceText);
+    }
+      else if (kind === 'EXT') {
+       const y = await client.query(`
         WITH win AS (
           SELECT ($1::date - INTERVAL '1 day')::timestamptz AS d0,
                  ($1::date)::timestamptz                     AS d1
@@ -279,22 +296,6 @@ exports.submitAnswer = async (req,res)=>{
       const yesterday = new Set(y.rows.map(r=>r.title));
       // תשובה נכונה אם הטקסט שנבחר *לא* הופיע אתמול
       correct = choiceText && !yesterday.has(choiceText);
-    }
-    else if (kind === 'C1') {
-      const k = await client.query(`SELECT child_name FROM Children WHERE family_key=$1`,[family_key]);
-      const names = new Set(k.rows.map(r=>r.child_name));
-      correct = names.has(choiceText);
-    }
-      else if (kind === 'EXT') {
-      // אנו מצפים לקבל מהקליינט גם correct_token שחזר בשאלה
-      const tokenFromClient = (req.body.correct_token || '').trim();
-      if (!tokenFromClient) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ message: 'correct_token is required for external questions' });
-      }
-      // בדיקה קריפטוגרפית: מחשבים hash(choiceText+secret) ומשווים לטוקן שהוחזר עם השאלה
-      const expect = signCorrectText(choiceText);
-      correct = (expect === tokenFromClient);
     }
 
     else { // G1
