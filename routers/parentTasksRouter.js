@@ -1,11 +1,15 @@
-// routers/parentTasksRouter.js
 const express = require('express');
-const r = express.Router();
+const router = express.Router();
 const ctrl = require('../controllers/parentTasksController');
 
-r.get('/review', ctrl.listForReviewDay);
-r.post('/approve', ctrl.approveChildTask);
-r.post('/reject', ctrl.rejectChildTask);
-r.get('/leaderboard/week', ctrl.weekLeaderboard);
+// רשימת פריטים לאישור (הילד סימן "סיימתי" = status=1)
+router.get('/review', ctrl.listForReview);
 
-module.exports = r;
+// אישור משימה (מעניק נקודה)
+router.post('/approve', ctrl.approveOne);
+
+// דחייה / ביטול
+router.post('/reject', ctrl.rejectOne);
+
+module.exports = router;
+
