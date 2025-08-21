@@ -29,7 +29,8 @@ const kidsRouter = require('./routers/kidsRouter');
 app.use('/kids', kidsRouter);
 const kidsTriviaRouter = require('./routers/kidsTriviaRouter');
 app.use('/kids/trivia', kidsTriviaRouter);
-
+const parentTasksRouter = require('./routers/parentTasksRouter');
+app.use('/parent-tasks', parentTasksRouter);
 
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
