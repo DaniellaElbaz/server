@@ -32,6 +32,35 @@ app.use('/kids/trivia', kidsTriviaRouter);
 const parentTasksRouter = require('./routers/parentTasksRouter');
 app.use('/parent-tasks', parentTasksRouter);
 
-app.listen(3000, () => {
-  console.log('Server is running on port 3000');
+// ---- דפי HTML (למנוע התנגשות עם נתיבי API, נשתמש בשמות הקבצים) ----
+app.get('/', (req, res) => {
+  res.sendFile(path.join(CLIENT_DIR, '../client/index.html'));
+});
+
+// דפי האפליקציה (Front-end pages):
+app.get('/child-tasks', (req, res) => {
+  res.sendFile(path.join(CLIENT_DIR, '../client/child-tasks.html'));
+});
+
+app.get('/quiz', (req, res) => {
+  res.sendFile(path.join(CLIENT_DIR, '../client/quiz.html'));
+});
+
+app.get('/parent-approve', (req, res) => {
+  res.sendFile(path.join(CLIENT_DIR, '../client/parent-approve.html'));
+});
+
+// חשוב: /parent-calendar הוא API קיים, לכן את הדף נגיש תחת השם הקובץ:
+app.get('/parent-calendar.html', (req, res) => {
+  res.sendFile(path.join(CLIENT_DIR, '../client/parent-calendar.html'));
+});
+
+// אופציונלי: דף בית הורה
+app.get('/parent-home.html', (req, res) => {
+  res.sendFile(path.join(CLIENT_DIR, '../client/parent-home.html'));
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log('Server is running on port', PORT);
 });
