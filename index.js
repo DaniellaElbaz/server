@@ -43,9 +43,10 @@ app.get('/parent-calendar.html', (_req, res) =>
   res.sendFile(path.join(CLIENT_DIR, 'parent-calendar.html'))
 );
 
-app.get('*', (_req, res) => {
+app.get('/*', (_req, res) => {
   res.sendFile(path.join(CLIENT_DIR, 'index.html'));
 });
+
 
 /** Start server */
 const PORT = process.env.PORT || 3000;
