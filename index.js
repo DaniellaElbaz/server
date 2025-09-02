@@ -7,7 +7,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const app = express();
 
 /** הגשת client */
-const CLIENT_DIR = path.resolve(__dirname, '..', 'client');
+const CLIENT_DIR = path.resolve(__dirname, '..', '/client');
 app.use(express.static(CLIENT_DIR));
 
 app.use(cors({
