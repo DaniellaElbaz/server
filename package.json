@@ -4,7 +4,7 @@
   "description": "Homies Family Task Management API Server using Neon",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "npm index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
