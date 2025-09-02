@@ -7,7 +7,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const app = express();
 
 /** הגשת client */
-const CLIENT_DIR = path.resolve(__dirname, '..', '/client');
+const CLIENT_DIR = path.resolve(__dirname, '../client');
 app.use(express.static(CLIENT_DIR));
 
 app.use(cors({
@@ -32,16 +32,16 @@ app.use('/kids',            require('./routers/kidsRouter'));
 app.use('/kids/trivia',     require('./routers/kidsTriviaRouter'));
 app.use('/parent-tasks',    require('./routers/parentTasksRouter'));
 
-/** דפי Frontend */
-app.get('/',               (_req, res) => res.sendFile(path.join(CLIENT_DIR, 'index.html')));
-app.get('/login.html',     (_req, res) => res.sendFile(path.join(CLIENT_DIR, 'login.html')));
-app.get('/members.html',   (_req, res) => res.sendFile(path.join(CLIENT_DIR, 'members.html')));
-app.get('/child-tasks',    (_req, res) => res.sendFile(path.join(CLIENT_DIR, 'child-tasks.html')));
-app.get('/quiz',           (_req, res) => res.sendFile(path.join(CLIENT_DIR, 'quiz.html')));
-app.get('/parent-approve', (_req, res) => res.sendFile(path.join(CLIENT_DIR, 'parent-approve.html')));
-app.get('/parent-calendar.html', (_req, res) =>
-  res.sendFile(path.join(CLIENT_DIR, 'parent-calendar.html'))
-);
+// /** דפי Frontend */
+// app.get('/',               (_req, res) => res.sendFile(path.join(CLIENT_DIR, 'index.html')));
+// app.get('/login.html',     (_req, res) => res.sendFile(path.join(CLIENT_DIR, 'login.html')));
+// app.get('/members.html',   (_req, res) => res.sendFile(path.join(CLIENT_DIR, 'members.html')));
+// app.get('/child-tasks',    (_req, res) => res.sendFile(path.join(CLIENT_DIR, 'child-tasks.html')));
+// app.get('/quiz',           (_req, res) => res.sendFile(path.join(CLIENT_DIR, 'quiz.html')));
+// app.get('/parent-approve', (_req, res) => res.sendFile(path.join(CLIENT_DIR, 'parent-approve.html')));
+// app.get('/parent-calendar.html', (_req, res) =>
+//   res.sendFile(path.join(CLIENT_DIR, 'parent-calendar.html'))
+// );
 
 
 
